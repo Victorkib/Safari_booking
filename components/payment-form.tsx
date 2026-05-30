@@ -1,16 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { createPayment, updatePaymentStatus } from '@/app/actions/payments'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { createPayment } from '@/app/actions/payments'
+import { formatPhoneForDisplay } from '@/lib/mpesa/phone'
+import { CreditCard, Smartphone, Building2, ShieldCheck } from 'lucide-react'
 
 interface PaymentFormProps {
   bookingId: string
   amount: string
+  mpesaLive: boolean
 }
 
-export function PaymentForm({ bookingId, amount }: PaymentFormProps) {
+export function PaymentForm({ bookingId, amount, mpesaLive }: PaymentFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +32,7 @@ export function PaymentForm({ bookingId, amount }: PaymentFormProps) {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,48 +41,32 @@ export function PaymentForm({ bookingId, amount }: PaymentFormProps) {
     setError('')
 
     try {
-      let transactionId = ''
-      let mpesaReceipt = ''
-
-      if (paymentMethod === 'mpesa') {
-        if (!formData.mpesa_phone) {
-          setError('Please enter M-Pesa phone number')
-          setLoading(false)
-          return
-        }
-        transactionId = `MPESA-${Date.now()}`
-        mpesaReceipt = formData.mpesa_phone
-      } else if (paymentMethod === 'stripe') {
-        if (!formData.card_number || !formData.card_expiry || !formData.card_cvc) {
-          setError('Please enter complete card details')
-          setLoading(false)
-          return
-        }
-        transactionId = `CARD-${Date.now()}`
-      } else {
-        if (!formData.account_number) {
-          setError('Please enter account number')
-          setLoading(false)
-          return
-        }
-        transactionId = `BANK-${Date.now()}`
+      if (paymentMethod === 'mpesa' && !formData.mpesa_phone) {
+        setError('Please enter M-Pesa phone number')
+        return
+      }
+      if (paymentMethod === 'stripe' && (!formData.card_number || !formData.card_expiry || !formData.card_cvc)) {
+        setError('Please enter complete card details')
+        return
+      }
+      if (paymentMethod === 'bank_transfer' && !formData.account_number) {
+        setError('Please enter account number')
+        return
       }
 
-      const payment = await createPayment({
+      const result = await createPayment({
         booking_id: bookingId,
-        amount: amount,
         payment_method: paymentMethod,
-        transaction_id: transactionId,
-        mpesa_receipt: mpesaReceipt,
+        mpesa_phone: paymentMethod === 'mpesa' ? formData.mpesa_phone : undefined,
       })
 
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const params = new URLSearchParams()
+      if (result.mpesaStk) {
+        params.set('stk', '1')
+      }
 
-      // Update payment status to completed
-      await updatePaymentStatus(payment.id, 'completed')
-
-      router.push(`/booking/${bookingId}/success`)
+      router.push(`/booking/${bookingId}/success${params.toString() ? `?${params}` : ''}`)
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed. Please try again.')
     } finally {
@@ -83,142 +74,138 @@ export function PaymentForm({ bookingId, amount }: PaymentFormProps) {
     }
   }
 
+  const methods = [
+    {
+      id: 'mpesa' as const,
+      icon: Smartphone,
+      title: 'M-Pesa',
+      description: mpesaLive
+        ? 'STK Push — pay on your phone'
+        : 'Mobile money (manual verification)',
+    },
+    {
+      id: 'stripe' as const,
+      icon: CreditCard,
+      title: 'Credit card',
+      description: 'Visa or Mastercard (simulated)',
+    },
+    {
+      id: 'bank_transfer' as const,
+      icon: Building2,
+      title: 'Bank transfer',
+      description: 'Direct deposit (manual verification)',
+    },
+  ]
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Payment Method Selection */}
+      <Alert className={mpesaLive ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-900'}>
+        <ShieldCheck className="size-4" />
+        <AlertDescription>
+          {mpesaLive
+            ? 'M-Pesa payments are processed live via Safaricom STK Push. Enter your PIN when prompted — successful payments confirm your booking automatically.'
+            : 'M-Pesa is in manual verification mode. Payments are reviewed by our team before confirmation.'}
+        </AlertDescription>
+      </Alert>
+
       <div className="space-y-3">
-        <label className="block text-sm font-semibold mb-4">Select Payment Method</label>
-
-        <div
-          onClick={() => setPaymentMethod('mpesa')}
-          className={`p-4 border-2 rounded-lg cursor-pointer transition ${
-            paymentMethod === 'mpesa'
-              ? 'border-primary bg-primary/5'
-              : 'border-border hover:border-muted-foreground'
-          }`}
+        <Label className="text-sm font-semibold">Payment method</Label>
+        <RadioGroup
+          value={paymentMethod}
+          onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}
+          className="space-y-3"
         >
-          <div className="flex items-center gap-3">
-            <input
-              type="radio"
-              name="payment"
-              value="mpesa"
-              checked={paymentMethod === 'mpesa'}
-              onChange={(e) => setPaymentMethod(e.target.value as 'mpesa')}
-              className="w-4 h-4"
-            />
-            <div>
-              <p className="font-semibold">M-Pesa</p>
-              <p className="text-sm text-muted-foreground">Mobile money transfer</p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          onClick={() => setPaymentMethod('stripe')}
-          className={`p-4 border-2 rounded-lg cursor-pointer transition ${
-            paymentMethod === 'stripe'
-              ? 'border-primary bg-primary/5'
-              : 'border-border hover:border-muted-foreground'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <input
-              type="radio"
-              name="payment"
-              value="stripe"
-              checked={paymentMethod === 'stripe'}
-              onChange={(e) => setPaymentMethod(e.target.value as 'stripe')}
-              className="w-4 h-4"
-            />
-            <div>
-              <p className="font-semibold">Credit Card</p>
-              <p className="text-sm text-muted-foreground">Visa or Mastercard</p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          onClick={() => setPaymentMethod('bank_transfer')}
-          className={`p-4 border-2 rounded-lg cursor-pointer transition ${
-            paymentMethod === 'bank_transfer'
-              ? 'border-primary bg-primary/5'
-              : 'border-border hover:border-muted-foreground'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <input
-              type="radio"
-              name="payment"
-              value="bank_transfer"
-              checked={paymentMethod === 'bank_transfer'}
-              onChange={(e) => setPaymentMethod(e.target.value as 'bank_transfer')}
-              className="w-4 h-4"
-            />
-            <div>
-              <p className="font-semibold">Bank Transfer</p>
-              <p className="text-sm text-muted-foreground">Direct bank deposit</p>
-            </div>
-          </div>
-        </div>
+          {methods.map((method) => (
+            <label
+              key={method.id}
+              htmlFor={method.id}
+              className={`flex cursor-pointer items-start gap-4 rounded-xl border-2 p-4 transition ${
+                paymentMethod === method.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground/50'
+              }`}
+            >
+              <RadioGroupItem value={method.id} id={method.id} className="mt-1" />
+              <method.icon className="mt-0.5 size-5 text-secondary" />
+              <div>
+                <p className="font-semibold">{method.title}</p>
+                <p className="text-sm text-muted-foreground">{method.description}</p>
+              </div>
+            </label>
+          ))}
+        </RadioGroup>
       </div>
 
-      {/* M-Pesa Form */}
       {paymentMethod === 'mpesa' && (
-        <div>
-          <label className="block text-sm font-semibold mb-2">M-Pesa Phone Number</label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="mpesa_phone">M-Pesa phone number</Label>
+          <Input
+            id="mpesa_phone"
             type="tel"
             name="mpesa_phone"
             value={formData.mpesa_phone}
             onChange={handleInputChange}
-            placeholder="254xxxxxxxxx or +254xxxxxxxxx"
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="07XX XXX XXX or 2547XXXXXXXX"
             required
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            You&apos;ll receive a prompt on your phone to complete the payment
-          </p>
+          {formData.mpesa_phone && (
+            <p className="text-xs text-muted-foreground">
+              STK prompt will be sent to this number
+              {(() => {
+                try {
+                  const digits = formData.mpesa_phone.replace(/\D/g, '')
+                  const normalized =
+                    digits.startsWith('254') && digits.length === 12
+                      ? digits
+                      : digits.startsWith('0') && digits.length === 10
+                        ? `254${digits.slice(1)}`
+                        : null
+                  return normalized ? ` (${formatPhoneForDisplay(normalized)})` : ''
+                } catch {
+                  return ''
+                }
+              })()}
+            </p>
+          )}
         </div>
       )}
 
-      {/* Card Form */}
       {paymentMethod === 'stripe' && (
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold mb-2">Card Number</label>
-            <input
-              type="text"
+          <p className="text-xs text-muted-foreground">
+            Card details are for demo only — not processed by a payment provider.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="card_number">Card number</Label>
+            <Input
+              id="card_number"
               name="card_number"
               value={formData.card_number}
               onChange={handleInputChange}
               placeholder="1234 5678 9012 3456"
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold mb-2">Expiry Date</label>
-              <input
-                type="text"
+            <div className="space-y-2">
+              <Label htmlFor="card_expiry">Expiry</Label>
+              <Input
+                id="card_expiry"
                 name="card_expiry"
                 value={formData.card_expiry}
                 onChange={handleInputChange}
                 placeholder="MM/YY"
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-semibold mb-2">CVC</label>
-              <input
-                type="text"
+            <div className="space-y-2">
+              <Label htmlFor="card_cvc">CVC</Label>
+              <Input
+                id="card_cvc"
                 name="card_cvc"
                 value={formData.card_cvc}
                 onChange={handleInputChange}
                 placeholder="123"
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
@@ -226,33 +213,34 @@ export function PaymentForm({ bookingId, amount }: PaymentFormProps) {
         </div>
       )}
 
-      {/* Bank Transfer Form */}
       {paymentMethod === 'bank_transfer' && (
-        <div>
-          <label className="block text-sm font-semibold mb-2">Account Number</label>
-          <input
-            type="text"
+        <div className="space-y-2">
+          <Label htmlFor="account_number">Account number</Label>
+          <Input
+            id="account_number"
             name="account_number"
             value={formData.account_number}
             onChange={handleInputChange}
             placeholder="Enter your bank account number"
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             required
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Our banking details will be provided after verification
-          </p>
         </div>
       )}
 
       {error && (
-        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md text-sm">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       <Button type="submit" disabled={loading} size="lg" className="w-full">
-        {loading ? 'Processing Payment...' : `Pay KES ${amount}`}
+        {loading
+          ? paymentMethod === 'mpesa' && mpesaLive
+            ? 'Sending STK Push…'
+            : 'Submitting payment…'
+          : paymentMethod === 'mpesa' && mpesaLive
+            ? `Pay with M-Pesa — KES ${parseFloat(amount).toLocaleString()}`
+            : `Submit payment — KES ${parseFloat(amount).toLocaleString()}`}
       </Button>
     </form>
   )

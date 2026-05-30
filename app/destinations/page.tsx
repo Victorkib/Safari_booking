@@ -1,68 +1,75 @@
-import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
+import Image from 'next/image'
 import { getAllDestinations } from '@/app/actions/destinations'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/layout/page-header'
+import { getDestinationImageUrl } from '@/lib/safari-images'
 
 export default async function DestinationsPage() {
   const destinations = await getAllDestinations()
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-background py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-foreground mb-4">Safari Destinations</h1>
-            <p className="text-lg text-muted-foreground">
-              Explore Kenya&apos;s premier wildlife parks and conservancies
-            </p>
-          </div>
+    <main className="px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <PageHeader
+          title="Safari destinations"
+          description="Explore Kenya's premier wildlife parks and conservancies"
+        />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {destinations.map((dest) => (
-              <Card key={dest.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle>{dest.name}</CardTitle>
-                  <CardDescription>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {destinations.map((dest) => (
+            <article
+              key={dest.id}
+              className="group overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all hover:shadow-xl"
+            >
+              <div className="relative aspect-[16/10] overflow-hidden">
+                <Image
+                  src={getDestinationImageUrl(dest.id, dest.name)}
+                  alt={dest.name}
+                  fill
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 400px"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-4">
+                  <p className="text-xs uppercase tracking-wider text-white/70">
                     {dest.region}, {dest.country}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {dest.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {dest.description}
-                    </p>
-                  )}
-                  {dest.best_season && (
-                    <p className="text-xs text-muted-foreground">
-                      <strong>Best season:</strong> {dest.best_season}
-                    </p>
-                  )}
-                  {dest.wildlife && dest.wildlife.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {dest.wildlife.slice(0, 4).map((animal) => (
-                        <span
-                          key={animal}
-                          className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground"
-                        >
-                          {animal}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {destinations.length === 0 && (
-            <p className="text-center text-muted-foreground py-12">
-              No destinations yet. Run <code className="text-sm">npm run db:seed</code> to populate sample data.
-            </p>
-          )}
+                  </p>
+                  <h3 className="font-display text-xl font-semibold text-white">{dest.name}</h3>
+                </div>
+              </div>
+              <div className="space-y-4 p-5">
+                {dest.description && (
+                  <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                    {dest.description}
+                  </p>
+                )}
+                {dest.best_season && (
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Best season:</strong> {dest.best_season}
+                  </p>
+                )}
+                {dest.wildlife && dest.wildlife.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {dest.wildlife.slice(0, 4).map((animal) => (
+                      <span
+                        key={animal}
+                        className="rounded-full border border-border/60 px-2.5 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {animal}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </article>
+          ))}
         </div>
-      </main>
-      <Footer />
-    </>
+
+        {destinations.length === 0 && (
+          <p className="py-12 text-center text-muted-foreground">
+            No destinations yet. Run <code className="text-sm">npm run db:seed</code> to populate sample data.
+          </p>
+        )}
+      </div>
+    </main>
   )
 }

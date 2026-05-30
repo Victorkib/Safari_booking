@@ -22,11 +22,15 @@ export function BookingActions({
   const [driverId, setDriverId] = useState(currentDriverId ?? '')
   const [loading, setLoading] = useState(false)
 
-  const handleStatus = async (status: 'confirmed' | 'cancelled' | 'completed') => {
+  const status = currentStatus ?? 'pending'
+
+  const handleStatus = async (next: 'confirmed' | 'cancelled' | 'completed') => {
     setLoading(true)
     try {
-      await updateBookingStatus(bookingId, status)
+      await updateBookingStatus(bookingId, next)
       router.refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Update failed')
     } finally {
       setLoading(false)
     }
@@ -38,6 +42,8 @@ export function BookingActions({
     try {
       await assignDriverToBooking(bookingId, driverId)
       router.refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Assignment failed')
     } finally {
       setLoading(false)
     }
@@ -45,7 +51,7 @@ export function BookingActions({
 
   return (
     <div className="flex flex-wrap gap-2 items-center">
-      {currentStatus === 'pending' && (
+      {status === 'paid' && (
         <>
           <Button size="sm" disabled={loading} onClick={() => handleStatus('confirmed')}>
             Confirm
@@ -55,24 +61,33 @@ export function BookingActions({
           </Button>
         </>
       )}
-      {currentStatus === 'confirmed' && (
+      {status === 'pending' && (
+        <Button size="sm" variant="destructive" disabled={loading} onClick={() => handleStatus('cancelled')}>
+          Cancel
+        </Button>
+      )}
+      {status === 'confirmed' && (
         <Button size="sm" variant="outline" disabled={loading} onClick={() => handleStatus('completed')}>
           Mark Complete
         </Button>
       )}
-      <select
-        value={driverId}
-        onChange={(e) => setDriverId(e.target.value)}
-        className="text-sm px-2 py-1 border border-border rounded-md bg-background"
-      >
-        <option value="">Assign driver...</option>
-        {drivers.map((d) => (
-          <option key={d.id} value={d.id}>{d.name}</option>
-        ))}
-      </select>
-      <Button size="sm" variant="outline" disabled={loading || !driverId} onClick={handleAssignDriver}>
-        Assign
-      </Button>
+      {(status === 'confirmed' || status === 'completed') && (
+        <>
+          <select
+            value={driverId}
+            onChange={(e) => setDriverId(e.target.value)}
+            className="text-sm px-2 py-1 border border-border rounded-md bg-background"
+          >
+            <option value="">Assign driver...</option>
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <Button size="sm" variant="outline" disabled={loading || !driverId} onClick={handleAssignDriver}>
+            Assign
+          </Button>
+        </>
+      )}
     </div>
   )
 }

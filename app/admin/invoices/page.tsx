@@ -1,18 +1,11 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
 import { getAllPayments } from '@/app/actions/payments'
 import { getAllBookings } from '@/app/actions/bookings'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/layout/page-header'
 import Link from 'next/link'
 
 export default async function AdminInvoices() {
-  const session = await getSession()
-  
-  if (!session?.user || (session.user as any).role !== 'admin') {
-    redirect('/sign-in')
-  }
-
   const payments = await getAllPayments()
   const bookings = await getAllBookings()
 
@@ -38,18 +31,12 @@ export default async function AdminInvoices() {
     .reduce((sum, i) => sum + i.amount, 0)
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Invoices & Billing</h1>
-            <p className="text-muted-foreground">
-              Manage customer invoices and track revenue
-            </p>
-          </div>
-          <Button>Generate Invoice</Button>
-        </div>
+    <>
+      <PageHeader
+        title="Invoices & Billing"
+        description="Manage customer invoices and track revenue"
+        actions={<Button>Generate Invoice</Button>}
+      />
 
         {/* Financial Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -160,7 +147,6 @@ export default async function AdminInvoices() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </>
   )
 }

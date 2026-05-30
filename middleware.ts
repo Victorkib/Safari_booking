@@ -1,11 +1,36 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { auth } from '@/lib/auth'
 
 const adminRoutes = ['/admin']
 const driverRoutes = ['/driver']
 const authRoutes = ['/sign-in', '/sign-up']
 const protectedRoutes = ['/customer-dashboard', '/booking']
+
+type MiddlewareSession = {
+  user?: {
+    id: string
+    role?: string
+  }
+}
+
+/** Edge-safe session lookup — must not import Node-only auth/db modules. */
+async function getSession(request: NextRequest): Promise<MiddlewareSession | null> {
+  try {
+    const response = await fetch(new URL('/api/auth/get-session', request.url), {
+      headers: {
+        cookie: request.headers.get('cookie') ?? '',
+      },
+      cache: 'no-store',
+    })
+
+    if (!response.ok) return null
+
+    const data = (await response.json()) as MiddlewareSession | null
+    return data?.user ? data : null
+  } catch {
+    return null
+  }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -19,8 +44,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const session = await auth.api.getSession({ headers: request.headers })
-  const role = (session?.user as { role?: string } | undefined)?.role ?? 'customer'
+  const session = await getSession(request)
+  const role = session?.user?.role ?? 'customer'
 
   if (isAuthRoute && session?.user) {
     const redirectTo =

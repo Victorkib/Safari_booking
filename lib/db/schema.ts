@@ -143,6 +143,7 @@ export const payments = pgTable('payments', {
   payment_method: text('payment_method'),
   transaction_id: text('transaction_id').unique(),
   mpesa_receipt: text('mpesa_receipt'),
+  mpesa_phone: text('mpesa_phone'),
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow(),
 })

@@ -2,26 +2,23 @@ import { getAdminPackages } from '@/app/actions/packages'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DeletePackageButton } from '@/components/delete-package-button'
+import { PageHeader } from '@/components/layout/page-header'
 import Link from 'next/link'
 
 export default async function AdminPackages() {
   const packages = await getAdminPackages()
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Packages Management</h1>
-            <p className="text-muted-foreground">
-              Create and manage safari packages
-            </p>
-          </div>
+    <>
+      <PageHeader
+        title="Packages Management"
+        description="Create and manage safari packages"
+        actions={(
           <Link href="/admin/packages/new">
             <Button>Create New Package</Button>
           </Link>
-        </div>
+        )}
+      />
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -131,7 +128,6 @@ export default async function AdminPackages() {
             </CardContent>
           </Card>
         )}
-      </div>
-    </div>
+    </>
   )
 }

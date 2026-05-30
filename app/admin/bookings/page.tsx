@@ -1,7 +1,9 @@
 import { getAllBookings } from '@/app/actions/bookings'
+import { getBookingStatusLabel, getBookingStatusStyles } from '@/lib/booking-status'
 import { getAllDrivers } from '@/app/actions/drivers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BookingActions } from '@/components/booking-actions'
+import { PageHeader } from '@/components/layout/page-header'
 
 export default async function AdminBookings() {
   const [bookings, drivers] = await Promise.all([getAllBookings(), getAllDrivers()])
@@ -10,61 +12,67 @@ export default async function AdminBookings() {
     total: bookings.length,
     confirmed: bookings.filter(b => b.status === 'confirmed').length,
     pending: bookings.filter(b => b.status === 'pending').length,
+    paid: bookings.filter(b => b.status === 'paid').length,
     cancelled: bookings.filter(b => b.status === 'cancelled').length,
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Bookings Management</h1>
-          <p className="text-muted-foreground">
-            View and manage all safari bookings
-          </p>
-        </div>
+    <>
+      <PageHeader
+        title="Bookings Management"
+        description="View and manage all safari bookings"
+      />
 
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </CardContent>
-          </Card>
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{stats.total}</p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-green-700">Confirmed</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-green-700">{stats.confirmed}</p>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-green-700">Confirmed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-green-700">{stats.confirmed}</p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-yellow-700">Pending</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-yellow-700">{stats.pending}</p>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-yellow-700">Awaiting Payment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-yellow-700">{stats.pending}</p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-red-700">Cancelled</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-red-700">{stats.cancelled}</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">Pending Verification</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-blue-700">{stats.paid}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-red-700">Cancelled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-red-700">{stats.cancelled}</p>
+          </CardContent>
+        </Card>
+      </div>
 
         {/* Bookings Table */}
-        <Card>
+      <Card>
           <CardHeader>
             <CardTitle>All Bookings</CardTitle>
             <CardDescription>
@@ -92,20 +100,15 @@ export default async function AdminBookings() {
                       <td className="py-4 px-4 font-mono text-xs">
                         {booking.id.slice(0, 12)}...
                       </td>
-                      <td className="py-4 px-4">{booking.package_id.slice(0, 8)}...</td>
+                      <td className="py-4 px-4">{booking.package_title ?? booking.package_id.slice(0, 8)}</td>
                       <td className="py-4 px-4">
                         {new Date(booking.start_date).toLocaleDateString()}
                       </td>
                       <td className="py-4 px-4">{booking.number_of_guests}</td>
                       <td className="py-4 px-4 font-semibold">KES {booking.total_price}</td>
                       <td className="py-4 px-4">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {booking.status}
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getBookingStatusStyles(booking.status)}`}>
+                          {getBookingStatusLabel(booking.status)}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-xs">
@@ -133,8 +136,7 @@ export default async function AdminBookings() {
               )}
             </div>
           </CardContent>
-        </Card>
-      </div>
-    </div>
+      </Card>
+    </>
   )
 }

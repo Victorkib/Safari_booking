@@ -55,14 +55,11 @@ export function BookingForm({ packageId, price, duration }: BookingFormProps) {
         return
       }
 
-      const totalPrice = (parseFloat(price) * formData.number_of_guests).toFixed(2)
-
       const booking = await createBooking({
         package_id: packageId,
         start_date: formData.start_date,
         end_date: formData.end_date,
         number_of_guests: formData.number_of_guests,
-        total_price: totalPrice,
         special_requests: formData.special_requests || undefined,
       })
 
@@ -156,7 +153,8 @@ export function BookingForm({ packageId, price, duration }: BookingFormProps) {
       </Button>
 
       <p className="text-xs text-muted-foreground text-center">
-        By booking, you agree to our terms and conditions
+        By booking, you agree to our{' '}
+        <a href="/terms" className="underline hover:text-foreground">terms and conditions</a>
       </p>
     </form>
   )

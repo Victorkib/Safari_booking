@@ -3,6 +3,7 @@ import { getItinerariesByPackageId } from '@/app/actions/itineraries'
 import { notFound } from 'next/navigation'
 import { BookingForm } from '@/components/booking-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/layout/page-header'
 
 interface PackageDetailPageProps {
   params: Promise<{ id: string }>
@@ -18,20 +19,21 @@ export default async function PackageDetail({ params }: PackageDetailPageProps) 
   }
 
   return (
-    <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-foreground mb-4">{pkg.title}</h1>
-              <div className="flex items-center gap-4 text-muted-foreground mb-6">
-                <span>{pkg.duration_days} Days</span>
-                {pkg.difficulty_level && <span>•</span>}
-                {pkg.difficulty_level && <span className="capitalize">{pkg.difficulty_level}</span>}
-                {pkg.group_size_min && <span>•</span>}
-                {pkg.group_size_min && <span>Group: {pkg.group_size_min}-{pkg.group_size_max}</span>}
-              </div>
-            </div>
+    <div className="py-12">
+      <PageHeader
+        title={pkg.title}
+        actions={(
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <span>{pkg.duration_days} Days</span>
+            {pkg.difficulty_level && <span>•</span>}
+            {pkg.difficulty_level && <span className="capitalize">{pkg.difficulty_level}</span>}
+            {pkg.group_size_min && <span>•</span>}
+            {pkg.group_size_min && <span>Group: {pkg.group_size_min}-{pkg.group_size_max}</span>}
+          </div>
+        )}
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
 
             {pkg.description && (
               <Card className="mb-8">
@@ -149,19 +151,18 @@ export default async function PackageDetail({ params }: PackageDetailPageProps) 
                 </CardContent>
               </Card>
             )}
-          </div>
+        </div>
 
-          <div className="lg:col-span-1">
-            <Card className="sticky top-8">
-              <CardHeader>
-                <CardTitle className="text-3xl">KES {pkg.price}</CardTitle>
-                <CardDescription>Per person</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BookingForm packageId={pkg.id} price={pkg.price} duration={pkg.duration_days} />
-              </CardContent>
-            </Card>
-          </div>
+        <div className="lg:col-span-1">
+          <Card className="sticky top-8">
+            <CardHeader>
+              <CardTitle className="text-3xl">KES {pkg.price}</CardTitle>
+              <CardDescription>Per person</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BookingForm packageId={pkg.id} price={pkg.price} duration={pkg.duration_days} />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

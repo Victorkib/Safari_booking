@@ -1,18 +1,10 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
-import { getAllPayments } from '@/app/actions/payments'
+import { AdminPaymentActions } from '@/components/admin-payment-actions'
+import { getAllPayments, isMpesaLive } from '@/app/actions/payments'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
+import { PageHeader } from '@/components/layout/page-header'
 
 export default async function AdminPayments() {
-  const session = await getSession()
-  
-  if (!session?.user || (session.user as any).role !== 'admin') {
-    redirect('/sign-in')
-  }
-
-  const payments = await getAllPayments()
+  const [payments, mpesaLive] = await Promise.all([getAllPayments(), isMpesaLive()])
 
   const stats = {
     total: payments.length,
@@ -25,15 +17,15 @@ export default async function AdminPayments() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Payments Management</h1>
-          <p className="text-muted-foreground">
-            Track and process all booking payments
-          </p>
-        </div>
+    <>
+      <PageHeader
+        title="Payments Management"
+        description={
+          mpesaLive
+            ? 'M-Pesa STK Push payments auto-confirm via Safaricom callback. Card and bank transfers still need manual approval.'
+            : 'Track and process all booking payments'
+        }
+      />
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -100,7 +92,14 @@ export default async function AdminPayments() {
                   {payments.map((payment) => (
                     <tr key={payment.id} className="border-b border-border hover:bg-muted/50">
                       <td className="py-4 px-4 font-mono text-xs">
-                        {payment.transaction_id?.slice(0, 12) || 'N/A'}...
+                        {payment.mpesa_receipt && payment.status === 'completed'
+                          ? payment.mpesa_receipt
+                          : `${payment.transaction_id?.slice(0, 12) ?? 'N/A'}...`}
+                        {payment.mpesa_phone && (
+                          <p className="mt-1 font-sans text-[10px] text-muted-foreground">
+                            +{payment.mpesa_phone}
+                          </p>
+                        )}
                       </td>
                       <td className="py-4 px-4 font-mono text-xs">
                         {payment.booking_id.slice(0, 8)}...
@@ -124,20 +123,15 @@ export default async function AdminPayments() {
                       <td className="py-4 px-4">
                         <div className="flex gap-2">
                           {payment.status === 'pending' ? (
-                            <>
-                              <Button size="sm" variant="default">
-                                Approve
-                              </Button>
-                              <Button size="sm" variant="destructive">
-                                Reject
-                              </Button>
-                            </>
+                            <AdminPaymentActions
+                              paymentId={payment.id}
+                              paymentMethod={payment.payment_method}
+                              mpesaLive={mpesaLive}
+                            />
+                          ) : payment.payment_method === 'mpesa' && payment.mpesa_receipt ? (
+                            <span className="text-xs text-green-700">M-Pesa verified</span>
                           ) : (
-                            <Link href={`/admin/payments/${payment.id}`}>
-                              <Button size="sm" variant="outline">
-                                View
-                              </Button>
-                            </Link>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </div>
                       </td>
@@ -154,7 +148,6 @@ export default async function AdminPayments() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </>
   )
 }

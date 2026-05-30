@@ -26,8 +26,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="hover:opacity-100 transition">
-                  Blog
+                <Link href="/terms" className="hover:opacity-100 transition">
+                  Terms & Conditions
                 </Link>
               </li>
             </ul>

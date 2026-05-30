@@ -1,18 +1,11 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
 import { getAllPayments } from '@/app/actions/payments'
 import { getAllBookings } from '@/app/actions/bookings'
 import { getAllPackages } from '@/app/actions/packages'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/layout/page-header'
 
 export default async function AdminReports() {
-  const session = await getSession()
-  
-  if (!session?.user || (session.user as any).role !== 'admin') {
-    redirect('/sign-in')
-  }
-
   const payments = await getAllPayments()
   const bookings = await getAllBookings()
   const packages = await getAllPackages()
@@ -43,15 +36,11 @@ export default async function AdminReports() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Business Reports</h1>
-          <p className="text-muted-foreground">
-            Analytics and performance metrics for your safari business
-          </p>
-        </div>
+    <>
+      <PageHeader
+        title="Business Reports"
+        description="Analytics and performance metrics for your safari business"
+      />
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -258,7 +247,6 @@ export default async function AdminReports() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </>
   )
 }

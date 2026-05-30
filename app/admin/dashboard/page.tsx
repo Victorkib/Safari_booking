@@ -1,8 +1,10 @@
 import { getAllBookings } from '@/app/actions/bookings'
+import { getBookingStatusLabel, getBookingStatusStyles } from '@/lib/booking-status'
 import { getAllPayments } from '@/app/actions/payments'
 import { getAdminPackages } from '@/app/actions/packages'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/layout/page-header'
 import Link from 'next/link'
 
 export default async function AdminDashboard() {
@@ -16,17 +18,14 @@ export default async function AdminDashboard() {
 
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed').length
   const pendingBookings = bookings.filter(b => b.status === 'pending').length
+  const paidBookings = bookings.filter(b => b.status === 'paid').length
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Admin Dashboard</h1>
-          <p className="text-muted-foreground">
-            Manage bookings, payments, and safari packages
-          </p>
-        </div>
+    <>
+      <PageHeader
+        title="Admin Dashboard"
+        description="Manage bookings, payments, and safari packages"
+      />
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -47,7 +46,7 @@ export default async function AdminDashboard() {
             <CardContent>
               <p className="text-3xl font-bold text-accent">{bookings.length}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                {confirmedBookings} confirmed, {pendingBookings} pending
+                {confirmedBookings} confirmed, {pendingBookings} awaiting payment, {paidBookings} pending verification
               </p>
             </CardContent>
           </Card>
@@ -93,17 +92,13 @@ export default async function AdminDashboard() {
                 {bookings.slice(0, 5).map((booking) => (
                   <div key={booking.id} className="flex items-center justify-between pb-4 border-b border-border last:border-0">
                     <div>
-                      <p className="font-semibold text-sm">{booking.id.slice(0, 8)}</p>
+                      <p className="font-semibold text-sm">{booking.package_title ?? booking.id.slice(0, 8)}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(booking.start_date).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {booking.status}
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getBookingStatusStyles(booking.status)}`}>
+                      {getBookingStatusLabel(booking.status)}
                     </span>
                   </div>
                 ))}
@@ -224,7 +219,6 @@ export default async function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </>
   )
 }
