@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useSession, signOut } from '@/lib/auth-client'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { Button } from '@/components/ui/button'
 import { getDashboardHref, getPortalButtonLabel } from '@/lib/navigation'
 
@@ -17,9 +18,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="font-display text-2xl font-semibold text-primary">
-          Safari Adventures
-        </Link>
+        <BrandLogo href="/" size="lg" />
 
         <div className="hidden items-center gap-8 md:flex">
           <Link href="/packages" className="text-foreground transition hover:text-primary">

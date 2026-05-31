@@ -1,4 +1,8 @@
 import Link from 'next/link'
+import { BrandLogo } from '@/components/brand/brand-logo'
+import { SOCIAL_LINKS } from '@/lib/seo/site'
+
+const currentYear = new Date().getFullYear()
 
 export function Footer() {
   return (
@@ -6,7 +10,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="font-bold text-lg mb-4">Safari Adventures</h3>
+            <BrandLogo href="/" variant="light" size="md" className="mb-4" />
             <p className="text-sm opacity-80">
               Experience Africa&apos;s most incredible wildlife destinations with expert guides.
             </p>
@@ -65,17 +69,32 @@ export function Footer() {
         </div>
 
         <div className="border-t border-background/20 pt-8 flex items-center justify-between text-sm opacity-80">
-          <p>&copy; 2024 Safari Adventures. All rights reserved.</p>
+          <p>&copy; {currentYear} Safari Adventures. All rights reserved.</p>
           <div className="flex gap-4">
-            <Link href="#" className="hover:opacity-100 transition">
+            <a
+              href={SOCIAL_LINKS.twitter}
+              rel="noopener noreferrer"
+              target="_blank"
+              className="hover:opacity-100 transition"
+            >
               Twitter
-            </Link>
-            <Link href="#" className="hover:opacity-100 transition">
+            </a>
+            <a
+              href={SOCIAL_LINKS.instagram}
+              rel="noopener noreferrer"
+              target="_blank"
+              className="hover:opacity-100 transition"
+            >
               Instagram
-            </Link>
-            <Link href="#" className="hover:opacity-100 transition">
+            </a>
+            <a
+              href={SOCIAL_LINKS.facebook}
+              rel="noopener noreferrer"
+              target="_blank"
+              className="hover:opacity-100 transition"
+            >
               Facebook
-            </Link>
+            </a>
           </div>
         </div>
       </div>

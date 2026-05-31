@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from '@/lib/auth-client'
 import { BookingFlowStepper } from '@/components/layout/booking-flow-stepper'
@@ -44,9 +45,7 @@ export function BookingJourneyShell({ children }: BookingJourneyShellProps) {
     <div className="flex min-h-svh flex-col bg-gradient-to-b from-background via-background to-muted/20">
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/customer-dashboard" className="font-display text-lg font-semibold text-primary">
-            Safari Adventures
-          </Link>
+          <BrandLogo href="/customer-dashboard" size="sm" showWordmark={false} />
           <p className="hidden text-xs font-medium uppercase tracking-widest text-muted-foreground sm:block">
             Booking · {stepLabel}
           </p>

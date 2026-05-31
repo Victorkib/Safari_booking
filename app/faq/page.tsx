@@ -1,28 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LegalPageShell } from '@/components/legal-page-shell'
-
-const faqs = [
-  {
-    q: 'When is my booking confirmed?',
-    a: 'After you submit payment, our team verifies it. Once approved, your booking status changes to Confirmed and you receive a confirmation email.',
-  },
-  {
-    q: 'What payment methods do you accept?',
-    a: 'M-Pesa, bank transfer, and card payments are supported in this system. All payments require manual verification before confirmation.',
-  },
-  {
-    q: 'Can I change my travel dates?',
-    a: 'Yes — see our Booking Policy. One free change is allowed up to 21 days before departure, subject to availability.',
-  },
-  {
-    q: 'What should I pack?',
-    a: 'Neutral-coloured clothing, sun protection, binoculars, and any personal medications. We send a detailed pre-trip checklist after confirmation.',
-  },
-  {
-    q: 'Are park fees included?',
-    a: 'Most packages include park entry fees — check the package details under Included Services. Some conservancy fees may apply separately.',
-  },
-]
+import { JsonLd } from '@/components/seo/json-ld'
+import { FAQ_ENTRIES } from '@/lib/content/faq'
+import { faqPageJsonLd } from '@/lib/seo/json-ld'
 
 export default function FaqPage() {
   return (
@@ -30,13 +10,14 @@ export default function FaqPage() {
       title="Frequently Asked Questions"
       description="Common questions about booking, payment, and travelling with Safari Adventures."
     >
+      <JsonLd data={faqPageJsonLd([...FAQ_ENTRIES])} />
       <div className="grid gap-4">
-        {faqs.map((item) => (
-          <Card key={item.q}>
+        {FAQ_ENTRIES.map((item) => (
+          <Card key={item.question}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">{item.q}</CardTitle>
+              <CardTitle className="text-base">{item.question}</CardTitle>
             </CardHeader>
-            <CardContent className="text-muted-foreground">{item.a}</CardContent>
+            <CardContent className="text-muted-foreground">{item.answer}</CardContent>
           </Card>
         ))}
       </div>

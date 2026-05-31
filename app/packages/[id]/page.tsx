@@ -1,7 +1,11 @@
+import type { Metadata } from 'next'
 import { getPackageById } from '@/app/actions/packages'
 import { getItinerariesByPackageId } from '@/app/actions/itineraries'
 import { getSession } from '@/lib/auth'
 import { AdminPreviewBanner } from '@/components/admin/admin-preview-banner'
+import { JsonLd } from '@/components/seo/json-ld'
+import { createPageMetadata } from '@/lib/seo/metadata'
+import { breadcrumbJsonLd, touristTripJsonLd } from '@/lib/seo/json-ld'
 import { notFound } from 'next/navigation'
 import { PackageHero } from '@/components/customer/package-hero'
 import { PackageBookingPanel } from '@/components/customer/package-booking-panel'
@@ -10,6 +14,38 @@ import { PackageDetails } from '@/components/customer/package-details'
 
 interface PackageDetailPageProps {
   params: Promise<{ id: string }>
+}
+
+function packageOgImage(images?: string[] | null): string | undefined {
+  const first = images?.[0]
+  if (!first) return undefined
+  if (first.startsWith('http://') || first.startsWith('https://')) return first
+  return first.startsWith('/') ? first : `/${first}`
+}
+
+export async function generateMetadata({ params }: PackageDetailPageProps): Promise<Metadata> {
+  const { id } = await params
+  const pkg = await getPackageById(id)
+  if (!pkg) {
+    return createPageMetadata({
+      title: 'Package not found',
+      description: 'This safari package could not be found.',
+      path: `/packages/${id}`,
+      noIndex: true,
+    })
+  }
+
+  const summary =
+    pkg.description?.replace(/\s+/g, ' ').trim().slice(0, 155) ||
+    `${pkg.duration_days}-day safari in ${(pkg.destinations ?? []).join(', ') || 'Kenya'}. Book with Safari Adventures.`
+
+  const og = packageOgImage(pkg.images)
+  return createPageMetadata({
+    title: pkg.title,
+    description: summary,
+    path: `/packages/${id}`,
+    ...(og?.startsWith('http') ? { imageUrl: og } : og ? { imagePath: og } : {}),
+  })
 }
 
 export default async function PackageDetail({ params }: PackageDetailPageProps) {
@@ -29,6 +65,16 @@ export default async function PackageDetail({ params }: PackageDetailPageProps) 
 
   return (
     <div className="py-8 sm:py-12">
+      <JsonLd
+        data={[
+          breadcrumbJsonLd([
+            { name: 'Home', path: '/' },
+            { name: 'Packages', path: '/packages' },
+            { name: pkg.title, path: `/packages/${pkg.id}` },
+          ]),
+          touristTripJsonLd(pkg),
+        ]}
+      />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {userRole === 'admin' && <AdminPreviewBanner />}
         <PackageHero

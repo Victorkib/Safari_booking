@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { usePathname } from 'next/navigation'
 import {
   Sidebar,
@@ -79,21 +80,19 @@ export function AppSidebar({ variant }: AppSidebarProps) {
       <SidebarHeader
         className={cn('border-l-4 pl-3', config.accentBorderClass)}
       >
-        <Link
-          href={config.homeHref}
-          className="flex flex-col gap-0.5 px-2 py-2 group-data-[collapsible=icon]:px-0"
-        >
-          <span className="text-lg font-bold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-            🦁 Safari Adventures
-          </span>
-          <span className="text-xs font-semibold text-primary group-data-[collapsible=icon]:hidden">
-            {config.portalTitle}
-          </span>
-          <span className="text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
-            {config.portalSubtitle}
-          </span>
-          <span className="hidden text-xl group-data-[collapsible=icon]:block">🦁</span>
-        </Link>
+        <div className="flex flex-col gap-2 px-2 py-2 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-0">
+          <BrandLogo
+            href={config.homeHref}
+            size="sm"
+            showWordmark={false}
+            className="group-data-[collapsible=icon]:justify-center"
+          />
+          <div className="group-data-[collapsible=icon]:hidden">
+            <p className="text-sm font-bold text-sidebar-foreground">Safari Adventures</p>
+            <p className="text-xs font-semibold text-primary">{config.portalTitle}</p>
+            <p className="text-[10px] text-muted-foreground">{config.portalSubtitle}</p>
+          </div>
+        </div>
       </SidebarHeader>
 
       <SidebarSeparator />

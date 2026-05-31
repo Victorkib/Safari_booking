@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { signOut, useSession } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { BookingFlowStepper } from '@/components/layout/booking-flow-stepper'
@@ -21,9 +22,7 @@ export function FlowShell({ children }: FlowShellProps) {
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-2 px-4 sm:px-6">
-          <Link href="/" className="font-display shrink-0 text-lg font-semibold text-primary">
-            Safari Adventures
-          </Link>
+          <BrandLogo href="/" size="sm" className="shrink-0" />
           <div className="flex items-center gap-1 sm:gap-2">
             <Button variant="ghost" size="sm" className="hidden gap-1.5 sm:inline-flex" asChild>
               <Link href="/packages">

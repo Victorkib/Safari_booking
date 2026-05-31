@@ -1,5 +1,12 @@
 # Operations guide
 
+## SEO & branding
+
+- Set `NEXT_PUBLIC_SITE_URL` to your production domain (e.g. `https://safariadventures.com`) for canonical URLs, sitemap, and Open Graph.
+- Favicons and PWA icons are generated from `public/logo.png`: run `npm run brand:assets` after logo changes.
+- Public routes are indexed; `/admin`, `/driver`, `/booking`, and account pages are `noindex`.
+- `@vercel/analytics` is not used — the site is standalone with no Vercel tracking snippet.
+
 ## Role matrix
 
 | Capability | Customer | Driver | Admin |

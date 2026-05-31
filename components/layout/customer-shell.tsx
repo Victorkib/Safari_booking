@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
@@ -49,9 +50,7 @@ export function CustomerShell({ children }: CustomerShellProps) {
     <div className="flex min-h-svh flex-col bg-gradient-to-b from-background via-background to-muted/20">
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/customer-dashboard" className="font-display text-xl font-semibold text-primary">
-            Safari Adventures
-          </Link>
+          <BrandLogo href="/customer-dashboard" size="md" />
 
           <nav className="hidden items-center gap-1 md:flex">
             {customerTopNav.map((item) => {
