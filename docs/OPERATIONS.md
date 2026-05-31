@@ -6,6 +6,7 @@
 - Favicons and PWA icons are generated from `public/logo.png`: run `npm run brand:assets` after logo changes.
 - Public routes are indexed; `/admin`, `/driver`, `/booking`, and account pages are `noindex`.
 - `@vercel/analytics` is not used — the site is standalone with no Vercel tracking snippet.
+- Link previews (WhatsApp, iMessage, Facebook) cache aggressively. After deploy, refresh cache at [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) — enter your URL and click **Scrape Again**. Old v0 icons came from legacy `public/apple-icon.png`; run `npm run brand:assets` after logo changes.
 
 ## Role matrix
 

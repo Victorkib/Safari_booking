@@ -33,16 +33,19 @@ export const LOGO_PATH = '/logo.png'
 
 /** Resolve canonical site origin (no trailing slash). */
 export function getSiteUrl(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    process.env.SITE_URL?.trim() ||
-    process.env.BETTER_AUTH_URL?.trim() ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+  const candidates = [
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.SITE_URL,
+    process.env.BETTER_AUTH_URL,
+    process.env.URL, // Netlify primary site URL
+    process.env.DEPLOY_PRIME_URL, // Netlify production deploy URL
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000')
+      : undefined,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ]
 
+  const raw = candidates.find((v) => v?.trim())?.trim() ?? 'http://localhost:3000'
   return raw.replace(/\/$/, '')
 }
 

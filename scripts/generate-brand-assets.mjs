@@ -42,13 +42,24 @@ async function main() {
   await writePng(logo, path.join(appDir, 'apple-icon.png'), 180)
   console.log('✓ app/icon.png, app/apple-icon.png')
 
+  const ogOut = path.join(publicDir, 'og-image.jpg')
   await sharp(ogSource)
     .resize(1200, 630, { fit: 'cover', position: 'centre' })
     .jpeg({ quality: 82, mozjpeg: true })
-    .toFile(path.join(publicDir, 'og-image.jpg'))
+    .toFile(ogOut)
   console.log('✓ public/og-image.jpg')
 
+  // Next.js file-based metadata (takes precedence; avoids stale public/ overrides)
+  await sharp(ogOut).toFile(path.join(appDir, 'opengraph-image.jpg'))
+  await sharp(ogOut).toFile(path.join(appDir, 'twitter-image.jpg'))
+  console.log('✓ app/opengraph-image.jpg, app/twitter-image.jpg')
+
+  // Keep public/apple-icon.png in sync with logo (prevents old v0 file at /apple-icon.png)
+  await writePng(logo, path.join(publicDir, 'apple-icon.png'), 180)
+  console.log('✓ public/apple-icon.png (logo)')
+
   console.log('Brand assets generated.')
+  console.log('Removed legacy v0 icons: do not commit public/icon.svg or old template PNGs.')
 }
 
 main().catch((err) => {

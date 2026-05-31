@@ -49,9 +49,11 @@ export function createPageMetadata(input: PageMetadataInput): Metadata {
       images: [
         {
           url: imageUrl,
+          secureUrl: imageUrl.startsWith('https') ? imageUrl : undefined,
           width: 1200,
           height: 630,
           alt: `${SITE_NAME} — Kenya safari experiences`,
+          type: 'image/jpeg',
         },
       ],
     },
@@ -106,9 +108,11 @@ export function createRootMetadata(): Metadata {
       images: [
         {
           url: absoluteUrl(DEFAULT_OG_IMAGE_PATH),
+          secureUrl: absoluteUrl(DEFAULT_OG_IMAGE_PATH),
           width: 1200,
           height: 630,
           alt: 'Sunset over the African savannah — Safari Adventures',
+          type: 'image/jpeg',
         },
       ],
     },
@@ -124,7 +128,6 @@ export function createRootMetadata(): Metadata {
         { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       ],
       apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
-      other: [{ rel: 'mask-icon', url: '/logo.png' }],
     },
     manifest: '/manifest.webmanifest',
     robots: {
