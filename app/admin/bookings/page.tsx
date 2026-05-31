@@ -1,7 +1,9 @@
+import Link from 'next/link'
 import { getAllBookings } from '@/app/actions/bookings'
 import { getBookingStatusLabel, getBookingStatusStyles } from '@/lib/booking-status'
 import { getAllDrivers } from '@/app/actions/drivers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { BookingActions } from '@/components/booking-actions'
 import { PageHeader } from '@/components/layout/page-header'
 
@@ -21,6 +23,11 @@ export default async function AdminBookings() {
       <PageHeader
         title="Bookings Management"
         description="View and manage all safari bookings"
+        actions={(
+          <Button asChild>
+            <Link href="/admin/bookings/new">New booking</Link>
+          </Button>
+        )}
       />
 
       {/* Statistics */}
@@ -85,6 +92,7 @@ export default async function AdminBookings() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-4 px-4 font-semibold">Booking ID</th>
+                    <th className="text-left py-4 px-4 font-semibold">Customer</th>
                     <th className="text-left py-4 px-4 font-semibold">Package</th>
                     <th className="text-left py-4 px-4 font-semibold">Start Date</th>
                     <th className="text-left py-4 px-4 font-semibold">Guests</th>
@@ -98,7 +106,16 @@ export default async function AdminBookings() {
                   {bookings.map((booking) => (
                     <tr key={booking.id} className="border-b border-border hover:bg-muted/50">
                       <td className="py-4 px-4 font-mono text-xs">
-                        {booking.id.slice(0, 12)}...
+                        <Link
+                          href={`/admin/bookings/${booking.id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {booking.id.slice(0, 12)}…
+                        </Link>
+                      </td>
+                      <td className="py-4 px-4 text-sm">
+                        <p className="font-medium">{booking.customer_name ?? '—'}</p>
+                        <p className="text-xs text-muted-foreground">{booking.customer_email}</p>
                       </td>
                       <td className="py-4 px-4">{booking.package_title ?? booking.package_id.slice(0, 8)}</td>
                       <td className="py-4 px-4">

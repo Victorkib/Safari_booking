@@ -9,11 +9,7 @@ export function BookingFlowStepper() {
   const isPayment = pathname.endsWith('/payment')
   const isSuccess = pathname.endsWith('/success')
 
-  if (!isPayment && !isSuccess) {
-    return null
-  }
-
-  const currentStepId = isSuccess ? 'pay' : 'pay'
+  const currentStepId = isPayment || isSuccess ? 'pay' : 'book'
 
   return (
     <div className="border-b border-border/80 bg-card/30 px-4 py-4 sm:px-6">

@@ -4,22 +4,26 @@ import { db } from '@/lib/db'
 import { bookings, drivers, payments, safariPackages, user, vehicles } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { getUserId, requireAdmin, requireDriver } from './auth'
+import { getUserId, requireAdmin, requireCustomer, requireDriver } from './auth'
+import { getUserRowById } from '@/lib/users/active-user'
 import { nanoid } from 'nanoid'
-import { createBookingSchema, formatZodError, updateBookingStatusSchema } from '@/lib/validations'
+import {
+  adminCreateBookingSchema,
+  createBookingSchema,
+  formatZodError,
+  updateBookingStatusSchema,
+} from '@/lib/validations'
 import type { BookingStatus } from '@/lib/booking-status'
 import {
   notifyBookingCreated,
   notifyBookingConfirmed,
   notifyDriverAssigned,
 } from '@/lib/email/notify'
-
-function computeEndDate(startDate: string, durationDays: number): string {
-  const start = new Date(`${startDate}T00:00:00`)
-  const end = new Date(start)
-  end.setDate(end.getDate() + durationDays - 1)
-  return end.toISOString().split('T')[0]
-}
+import {
+  compareDateStrings,
+  computeEndDateFromStart,
+  todayDateString,
+} from '@/lib/booking-dates'
 
 function computeTotalPrice(unitPrice: string, guests: number): string {
   return (parseFloat(unitPrice) * guests).toFixed(2)
@@ -40,6 +44,13 @@ const bookingWithPackageSelect = {
   updated_at: bookings.updated_at,
   package_title: safariPackages.title,
   package_duration_days: safariPackages.duration_days,
+  package_destinations: safariPackages.destinations,
+}
+
+const bookingWithCustomerSelect = {
+  ...bookingWithPackageSelect,
+  customer_name: user.name,
+  customer_email: user.email,
 }
 
 export type BookingWithPackage = {
@@ -57,9 +68,73 @@ export type BookingWithPackage = {
   updated_at: Date
   package_title: string | null
   package_duration_days: number | null
+  package_destinations: string[] | null
+}
+
+export type BookingWithCustomer = BookingWithPackage & {
+  customer_name: string | null
+  customer_email: string | null
+}
+
+async function insertBookingForCustomerUser(
+  customerUserId: string,
+  input: {
+    package_id: string
+    start_date: string
+    number_of_guests: number
+    special_requests?: string
+  }
+) {
+  const pkg = await db
+    .select()
+    .from(safariPackages)
+    .where(
+      and(eq(safariPackages.id, input.package_id), eq(safariPackages.status, 'active'))
+    )
+
+  if (!pkg[0]) {
+    throw new Error('Package not found or is no longer available')
+  }
+
+  const packageData = pkg[0]
+  const minGuests = packageData.group_size_min ?? 1
+  const maxGuests = packageData.group_size_max ?? 50
+
+  if (input.number_of_guests < minGuests || input.number_of_guests > maxGuests) {
+    throw new Error(`Group size must be between ${minGuests} and ${maxGuests} guests`)
+  }
+
+  if (compareDateStrings(input.start_date, todayDateString()) < 0) {
+    throw new Error('Start date cannot be in the past')
+  }
+
+  const endDate = computeEndDateFromStart(input.start_date, packageData.duration_days)
+  const totalPrice = computeTotalPrice(packageData.price, input.number_of_guests)
+
+  const booking = await db
+    .insert(bookings)
+    .values({
+      id: nanoid(),
+      userId: customerUserId,
+      package_id: input.package_id,
+      start_date: input.start_date,
+      end_date: endDate,
+      number_of_guests: input.number_of_guests,
+      total_price: totalPrice,
+      special_requests: input.special_requests,
+      status: 'pending',
+    })
+    .returning()
+
+  notifyBookingCreated(booking[0]).catch(console.error)
+
+  revalidatePath('/customer-dashboard')
+  revalidatePath('/admin/bookings')
+  return booking[0]
 }
 
 export async function getUserBookings(): Promise<BookingWithPackage[]> {
+  await requireCustomer()
   const userId = await getUserId()
   return await db
     .select(bookingWithPackageSelect)
@@ -70,6 +145,7 @@ export async function getUserBookings(): Promise<BookingWithPackage[]> {
 }
 
 export async function getBookingById(id: string): Promise<BookingWithPackage | null> {
+  await requireCustomer()
   const userId = await getUserId()
   const result = await db
     .select(bookingWithPackageSelect)
@@ -102,10 +178,10 @@ export async function getBookingByIdForDriver(id: string): Promise<BookingWithPa
 export async function createBooking(data: {
   package_id: string
   start_date: string
-  end_date: string
   number_of_guests: number
   special_requests?: string
 }) {
+  await requireCustomer()
   const userId = await getUserId()
 
   const parsed = createBookingSchema.safeParse(data)
@@ -113,58 +189,47 @@ export async function createBooking(data: {
     throw new Error(formatZodError(parsed.error))
   }
 
-  const input = parsed.data
+  return insertBookingForCustomerUser(userId, parsed.data)
+}
 
-  const pkg = await db
-    .select()
-    .from(safariPackages)
-    .where(and(eq(safariPackages.id, input.package_id), eq(safariPackages.status, 'active')))
+export async function createBookingForCustomer(data: {
+  customerUserId: string
+  package_id: string
+  start_date: string
+  number_of_guests: number
+  special_requests?: string
+}) {
+  await requireAdmin()
 
-  if (!pkg[0]) {
-    throw new Error('Package not found or is no longer available')
+  const parsed = adminCreateBookingSchema.safeParse(data)
+  if (!parsed.success) {
+    throw new Error(formatZodError(parsed.error))
   }
 
-  const packageData = pkg[0]
-  const minGuests = packageData.group_size_min ?? 1
-  const maxGuests = packageData.group_size_max ?? 50
-
-  if (input.number_of_guests < minGuests || input.number_of_guests > maxGuests) {
-    throw new Error(`Group size must be between ${minGuests} and ${maxGuests} guests`)
+  const customer = await getUserRowById(parsed.data.customerUserId)
+  if (!customer) {
+    throw new Error('Customer not found or deactivated')
+  }
+  if (customer.role !== 'customer') {
+    throw new Error('Bookings can only be created for customer accounts')
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const start = new Date(`${input.start_date}T00:00:00`)
-  if (start < today) {
-    throw new Error('Start date cannot be in the past')
-  }
+  const { customerUserId, ...bookingInput } = parsed.data
+  return insertBookingForCustomerUser(customerUserId, bookingInput)
+}
 
-  const expectedEnd = computeEndDate(input.start_date, packageData.duration_days)
-  if (input.end_date !== expectedEnd) {
-    throw new Error('Invalid trip dates for this package duration')
-  }
+export async function getBookingByIdForAdmin(
+  id: string
+): Promise<BookingWithCustomer | null> {
+  await requireAdmin()
+  const result = await db
+    .select(bookingWithCustomerSelect)
+    .from(bookings)
+    .leftJoin(safariPackages, eq(bookings.package_id, safariPackages.id))
+    .leftJoin(user, eq(bookings.userId, user.id))
+    .where(eq(bookings.id, id))
 
-  const totalPrice = computeTotalPrice(packageData.price, input.number_of_guests)
-
-  const booking = await db
-    .insert(bookings)
-    .values({
-      id: nanoid(),
-      userId,
-      package_id: input.package_id,
-      start_date: input.start_date,
-      end_date: input.end_date,
-      number_of_guests: input.number_of_guests,
-      total_price: totalPrice,
-      special_requests: input.special_requests,
-      status: 'pending',
-    })
-    .returning()
-
-  notifyBookingCreated(booking[0]).catch(console.error)
-
-  revalidatePath('/customer-dashboard')
-  return booking[0]
+  return result[0] ?? null
 }
 
 export async function updateBookingStatus(id: string, status: BookingStatus) {
@@ -201,6 +266,7 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
   }
 
   revalidatePath('/admin/bookings')
+  revalidatePath(`/admin/bookings/${id}`)
   revalidatePath('/customer-dashboard')
   revalidatePath('/driver/dashboard')
   return updated[0]
@@ -236,12 +302,13 @@ export async function assignDriverToBooking(bookingId: string, driverId: string)
   return updated[0]
 }
 
-export async function getAllBookings(): Promise<BookingWithPackage[]> {
+export async function getAllBookings(): Promise<BookingWithCustomer[]> {
   await requireAdmin()
   return await db
-    .select(bookingWithPackageSelect)
+    .select(bookingWithCustomerSelect)
     .from(bookings)
     .leftJoin(safariPackages, eq(bookings.package_id, safariPackages.id))
+    .leftJoin(user, eq(bookings.userId, user.id))
     .orderBy(desc(bookings.created_at))
 }
 
@@ -265,6 +332,7 @@ export async function getDriverBookings(): Promise<BookingWithPackage[]> {
 }
 
 export async function getBookingWithPayment(id: string) {
+  await requireCustomer()
   const userId = await getUserId()
   const bookingRows = await db
     .select(bookingWithPackageSelect)
@@ -284,6 +352,7 @@ export async function getBookingWithPayment(id: string) {
 }
 
 export async function getBookingDriverAssignment(bookingId: string) {
+  await requireCustomer()
   const userId = await getUserId()
 
   const booking = await db

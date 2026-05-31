@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 const adminRoutes = ['/admin']
 const driverRoutes = ['/driver']
 const authRoutes = ['/sign-in', '/sign-up']
-const protectedRoutes = ['/customer-dashboard', '/booking']
+const customerRoutes = ['/customer-dashboard', '/booking']
 
 type MiddlewareSession = {
   user?: {
@@ -13,7 +13,6 @@ type MiddlewareSession = {
   }
 }
 
-/** Edge-safe session lookup — must not import Node-only auth/db modules. */
 async function getSession(request: NextRequest): Promise<MiddlewareSession | null> {
   try {
     const response = await fetch(new URL('/api/auth/get-session', request.url), {
@@ -38,9 +37,9 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = adminRoutes.some((r) => pathname.startsWith(r))
   const isDriverRoute = driverRoutes.some((r) => pathname.startsWith(r))
   const isAuthRoute = authRoutes.some((r) => pathname.startsWith(r))
-  const isProtectedRoute = protectedRoutes.some((r) => pathname.startsWith(r))
+  const isCustomerRoute = customerRoutes.some((r) => pathname.startsWith(r))
 
-  if (!isAdminRoute && !isDriverRoute && !isAuthRoute && !isProtectedRoute) {
+  if (!isAdminRoute && !isDriverRoute && !isAuthRoute && !isCustomerRoute) {
     return NextResponse.next()
   }
 
@@ -57,7 +56,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(redirectTo, request.url))
   }
 
-  if ((isAdminRoute || isDriverRoute || isProtectedRoute) && !session?.user) {
+  if ((isAdminRoute || isDriverRoute || isCustomerRoute) && !session?.user) {
     const signInUrl = new URL('/sign-in', request.url)
     signInUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(signInUrl)
@@ -69,6 +68,14 @@ export async function middleware(request: NextRequest) {
 
   if (isDriverRoute && role !== 'driver') {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  if (isCustomerRoute && role === 'driver') {
+    return NextResponse.redirect(new URL('/driver/dashboard', request.url))
+  }
+
+  if (isCustomerRoute && role === 'admin') {
+    return NextResponse.redirect(new URL('/admin/bookings', request.url))
   }
 
   return NextResponse.next()

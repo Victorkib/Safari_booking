@@ -1,13 +1,17 @@
 import { getAllPackages } from '@/app/actions/packages'
+import { getSession } from '@/app/actions/auth'
+import { AdminPreviewBanner } from '@/components/admin/admin-preview-banner'
 import { PackageCard } from '@/components/package-card'
 import { PageHeader } from '@/components/layout/page-header'
 
 export default async function PackagesPage() {
-  const packages = await getAllPackages()
+  const [packages, session] = await Promise.all([getAllPackages(), getSession()])
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
 
   return (
     <main className="px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
+        {isAdmin && <AdminPreviewBanner />}
         <PageHeader
           title="All safari packages"
           description="Curated journeys across Kenya's most iconic landscapes"

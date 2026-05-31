@@ -1,9 +1,12 @@
 import { getPackageById } from '@/app/actions/packages'
 import { getItinerariesByPackageId } from '@/app/actions/itineraries'
+import { getSession } from '@/lib/auth'
+import { AdminPreviewBanner } from '@/components/admin/admin-preview-banner'
 import { notFound } from 'next/navigation'
-import { BookingForm } from '@/components/booking-form'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { PageHeader } from '@/components/layout/page-header'
+import { PackageHero } from '@/components/customer/package-hero'
+import { PackageBookingPanel } from '@/components/customer/package-booking-panel'
+import { PackageItinerary } from '@/components/customer/package-itinerary'
+import { PackageDetails } from '@/components/customer/package-details'
 
 interface PackageDetailPageProps {
   params: Promise<{ id: string }>
@@ -18,151 +21,52 @@ export default async function PackageDetail({ params }: PackageDetailPageProps) 
     notFound()
   }
 
+  const session = await getSession()
+  const userRole = (session?.user as { role?: string } | undefined)?.role ?? null
+  const signInHref = `/sign-in?callbackUrl=${encodeURIComponent(`/packages/${id}`)}`
+  const groupSizeMin = pkg.group_size_min ?? 1
+  const groupSizeMax = pkg.group_size_max ?? 20
+
   return (
-    <div className="py-12">
-      <PageHeader
-        title={pkg.title}
-        actions={(
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <span>{pkg.duration_days} Days</span>
-            {pkg.difficulty_level && <span>•</span>}
-            {pkg.difficulty_level && <span className="capitalize">{pkg.difficulty_level}</span>}
-            {pkg.group_size_min && <span>•</span>}
-            {pkg.group_size_min && <span>Group: {pkg.group_size_min}-{pkg.group_size_max}</span>}
+    <div className="py-8 sm:py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {userRole === 'admin' && <AdminPreviewBanner />}
+        <PackageHero
+          packageId={pkg.id}
+          title={pkg.title}
+          destinations={pkg.destinations}
+          durationDays={pkg.duration_days}
+          difficultyLevel={pkg.difficulty_level}
+          groupSizeMin={groupSizeMin}
+          groupSizeMax={groupSizeMax}
+          price={pkg.price}
+        />
+
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <PackageItinerary days={itineraryDays} />
+            <PackageDetails
+              description={pkg.description}
+              destinations={pkg.destinations}
+              highlights={pkg.highlights}
+              includedServices={pkg.included_services}
+              excludedItems={pkg.excluded_items}
+            />
           </div>
-        )}
-      />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
 
-            {pkg.description && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{pkg.description}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {itineraryDays.length > 0 && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Day-by-Day Itinerary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {itineraryDays.map((day) => (
-                    <div key={day.id} className="border-l-4 border-primary pl-4">
-                      <p className="font-semibold text-foreground">
-                        Day {day.day_number}: {day.title}
-                      </p>
-                      {day.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{day.description}</p>
-                      )}
-                      {day.activities && day.activities.length > 0 && (
-                        <ul className="mt-2 text-sm text-muted-foreground list-disc list-inside">
-                          {day.activities.map((a) => (
-                            <li key={a}>{a}</li>
-                          ))}
-                        </ul>
-                      )}
-                      {day.accommodation && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Stay: {day.accommodation}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {pkg.destinations && pkg.destinations.length > 0 && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Destinations</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {pkg.destinations.map((dest) => (
-                      <span
-                        key={dest}
-                        className="px-3 py-2 rounded-lg bg-primary/10 text-primary font-medium"
-                      >
-                        {dest}
-                      </span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {pkg.highlights && pkg.highlights.length > 0 && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Highlights</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {pkg.highlights.map((highlight) => (
-                      <li key={highlight} className="flex items-start gap-3">
-                        <span className="text-accent text-xl mt-1">✓</span>
-                        <span className="text-muted-foreground">{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {pkg.included_services && pkg.included_services.length > 0 && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>What&apos;s Included</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {pkg.included_services.map((service) => (
-                      <li key={service} className="flex items-start gap-2">
-                        <span className="text-primary">→</span>
-                        <span className="text-muted-foreground">{service}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {pkg.excluded_items && pkg.excluded_items.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Not Included</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {pkg.excluded_items.map((item) => (
-                      <li key={item} className="flex items-start gap-2">
-                        <span className="text-destructive">×</span>
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-        </div>
-
-        <div className="lg:col-span-1">
-          <Card className="sticky top-8">
-            <CardHeader>
-              <CardTitle className="text-3xl">KES {pkg.price}</CardTitle>
-              <CardDescription>Per person</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <BookingForm packageId={pkg.id} price={pkg.price} duration={pkg.duration_days} />
-            </CardContent>
-          </Card>
+          <div className="lg:col-span-1">
+            <PackageBookingPanel
+              packageId={pkg.id}
+              title={pkg.title}
+              price={pkg.price}
+              durationDays={pkg.duration_days}
+              groupSizeMin={groupSizeMin}
+              groupSizeMax={groupSizeMax}
+              isSignedIn={!!session?.user}
+              signInHref={signInHref}
+              userRole={userRole}
+            />
+          </div>
         </div>
       </div>
     </div>

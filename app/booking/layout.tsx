@@ -1,9 +1,9 @@
-import { FlowShell } from '@/components/layout/flow-shell'
+import { BookingJourneyShell } from '@/components/layout/booking-journey-shell'
 
 export default function BookingLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <FlowShell>{children}</FlowShell>
+  return <BookingJourneyShell>{children}</BookingJourneyShell>
 }

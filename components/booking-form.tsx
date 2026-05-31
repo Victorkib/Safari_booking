@@ -1,69 +1,80 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { createBooking } from '@/app/actions/bookings'
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { createBooking } from '@/app/actions/bookings'
+import {
+  computeEndDateFromStart,
+  formatDateLong,
+  todayDateString,
+  tripDayCount,
+} from '@/lib/booking-dates'
+import { CalendarDays, LogIn, Users } from 'lucide-react'
 
 interface BookingFormProps {
   packageId: string
   price: string
-  duration: number
+  durationDays: number
+  groupSizeMin: number
+  groupSizeMax: number
+  isSignedIn: boolean
+  signInHref: string
+  userRole?: string | null
 }
 
-export function BookingForm({ packageId, price, duration }: BookingFormProps) {
+export function BookingForm({
+  packageId,
+  price,
+  durationDays,
+  groupSizeMin,
+  groupSizeMax,
+  isSignedIn,
+  signInHref,
+  userRole,
+}: BookingFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [formData, setFormData] = useState({
-    start_date: '',
-    end_date: '',
-    number_of_guests: 1,
-    special_requests: '',
-  })
+  const [startDate, setStartDate] = useState('')
+  const [numberOfGuests, setNumberOfGuests] = useState(groupSizeMin)
+  const [specialRequests, setSpecialRequests] = useState('')
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => {
-      const updated = { ...prev, [name]: value }
-      
-      if (name === 'start_date' && updated.start_date) {
-        const startDate = new Date(updated.start_date)
-        const endDate = new Date(startDate)
-        endDate.setDate(endDate.getDate() + duration - 1)
-        updated.end_date = endDate.toISOString().split('T')[0]
-      }
-      
-      return updated
-    })
-  }
+  const endDate = useMemo(() => {
+    if (!startDate) return ''
+    return computeEndDateFromStart(startDate, durationDays)
+  }, [startDate, durationDays])
 
-  const handleGuestChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const guests = Math.max(1, parseInt(e.target.value) || 1)
-    setFormData(prev => ({ ...prev, number_of_guests: guests }))
-  }
+  const totalPrice = (parseFloat(price) * numberOfGuests).toFixed(2)
+  const minDate = todayDateString()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isSignedIn) return
+
     setLoading(true)
     setError('')
 
     try {
-      if (!formData.start_date || !formData.end_date) {
-        setError('Please select travel dates')
+      if (!startDate) {
+        setError('Please select a departure date')
         setLoading(false)
         return
       }
 
       const booking = await createBooking({
         package_id: packageId,
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        number_of_guests: formData.number_of_guests,
-        special_requests: formData.special_requests || undefined,
+        start_date: startDate,
+        number_of_guests: numberOfGuests,
+        special_requests: specialRequests.trim() || undefined,
       })
 
       router.push(`/booking/${booking.id}`)
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create booking')
     } finally {
@@ -71,90 +82,157 @@ export function BookingForm({ packageId, price, duration }: BookingFormProps) {
     }
   }
 
-  const totalPrice = (parseFloat(price) * formData.number_of_guests).toFixed(2)
+  if (userRole === 'driver') {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-center text-sm text-amber-900">
+        <p className="font-medium">Driver accounts cannot book safaris</p>
+        <p className="mt-2 text-muted-foreground">
+          Use the driver portal to view assigned tours.
+        </p>
+      </div>
+    )
+  }
+
+  if (userRole === 'admin') {
+    return (
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 text-center text-sm">
+        <p className="font-medium">Administrator booking</p>
+        <p className="mt-2 text-muted-foreground">
+          Create bookings on behalf of customers from the admin console — you cannot book as a customer yourself.
+        </p>
+        <Button asChild className="mt-4 w-full">
+          <Link href="/admin/bookings/new">Create booking for customer</Link>
+        </Button>
+        <Button asChild variant="outline" className="mt-2 w-full">
+          <Link href="/packages">Browse packages (preview only)</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="space-y-4 rounded-lg border border-secondary/30 bg-secondary/5 p-5 text-center">
+        <p className="text-sm text-muted-foreground">
+          Sign in to reserve your dates and complete your safari booking.
+        </p>
+        <Button asChild className="w-full">
+          <Link href={signInHref}>
+            <LogIn className="mr-2 size-4" />
+            Sign in to book
+          </Link>
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          New here?{' '}
+          <Link
+            href={signInHref.includes('/sign-in') ? signInHref.replace('/sign-in', '/sign-up') : '/sign-up'}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Create an account
+          </Link>
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label className="block text-sm font-semibold mb-2">Start Date</label>
-        <input
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="start_date" className="flex items-center gap-2">
+          <CalendarDays className="size-4 text-secondary" />
+          Departure date
+        </Label>
+        <Input
+          id="start_date"
           type="date"
           name="start_date"
-          value={formData.start_date}
-          onChange={handleDateChange}
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
           required
-          min={new Date().toISOString().split('T')[0]}
-          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          min={minDate}
         />
+        {endDate && (
+          <p className="text-xs text-muted-foreground">
+            {durationDays} days · ends {formatDateLong(endDate)} (
+            {tripDayCount(startDate, endDate)} day trip)
+          </p>
+        )}
       </div>
 
-      <div>
-        <label className="block text-sm font-semibold mb-2">End Date</label>
-        <input
-          type="date"
-          name="end_date"
-          value={formData.end_date}
-          disabled
-          className="w-full px-3 py-2 border border-border rounded-md bg-muted text-muted-foreground cursor-not-allowed"
+      <div className="space-y-2">
+        <Label htmlFor="guests" className="flex items-center gap-2">
+          <Users className="size-4 text-secondary" />
+          Number of guests
+        </Label>
+        <Input
+          id="guests"
+          type="number"
+          value={numberOfGuests}
+          onChange={(e) => {
+            const n = parseInt(e.target.value, 10)
+            if (!Number.isNaN(n)) {
+              setNumberOfGuests(Math.min(groupSizeMax, Math.max(groupSizeMin, n)))
+            }
+          }}
+          min={groupSizeMin}
+          max={groupSizeMax}
+          required
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          Auto-calculated based on package duration
+        <p className="text-xs text-muted-foreground">
+          This package accepts {groupSizeMin}–{groupSizeMax} guests
         </p>
       </div>
 
-      <div>
-        <label className="block text-sm font-semibold mb-2">Number of Guests</label>
-        <input
-          type="number"
-          value={formData.number_of_guests}
-          onChange={handleGuestChange}
-          min="1"
-          max="20"
-          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold mb-2">Special Requests (Optional)</label>
-        <textarea
-          name="special_requests"
-          value={formData.special_requests}
-          onChange={(e) => setFormData(prev => ({ ...prev, special_requests: e.target.value }))}
-          placeholder="Any special accommodations or preferences?"
+      <div className="space-y-2">
+        <Label htmlFor="special_requests">Special requests (optional)</Label>
+        <Textarea
+          id="special_requests"
+          value={specialRequests}
+          onChange={(e) => setSpecialRequests(e.target.value)}
+          placeholder="Dietary needs, accessibility, celebration, etc."
           rows={3}
-          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
 
-      <div className="bg-secondary/30 p-4 rounded-lg">
-        <div className="flex justify-between items-baseline mb-2">
-          <span className="text-muted-foreground">Price per person:</span>
-          <span className="text-lg font-semibold">KES {price}</span>
+      <div className="rounded-lg border border-border/80 bg-muted/30 p-4">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Price per person</span>
+          <span className="font-semibold">KES {parseFloat(price).toLocaleString()}</span>
         </div>
-        <div className="flex justify-between items-baseline">
-          <span className="font-semibold">Total ({formData.number_of_guests} {formData.number_of_guests === 1 ? 'guest' : 'guests'}):</span>
-          <span className="text-2xl font-bold text-primary">KES {totalPrice}</span>
+        <div className="mt-2 flex justify-between border-t border-border/80 pt-2">
+          <span className="font-medium">
+            Total ({numberOfGuests} {numberOfGuests === 1 ? 'guest' : 'guests'})
+          </span>
+          <span className="font-display text-xl font-semibold text-primary">
+            KES {parseFloat(totalPrice).toLocaleString()}
+          </span>
         </div>
       </div>
 
       {error && (
-        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md text-sm">
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
           {error}
-        </div>
+        </p>
       )}
 
-      <Button 
-        type="submit" 
-        disabled={loading}
-        className="w-full"
-        size="lg"
-      >
-        {loading ? 'Processing...' : 'Continue to Payment'}
+      <Button type="submit" disabled={loading || !startDate} className="w-full" size="lg">
+        {loading ? 'Creating booking…' : 'Review booking'}
       </Button>
 
-      <p className="text-xs text-muted-foreground text-center">
-        By booking, you agree to our{' '}
-        <a href="/terms" className="underline hover:text-foreground">terms and conditions</a>
+      <p className="text-center text-xs text-muted-foreground">
+        By booking you agree to our{' '}
+        <Link href="/terms" className="underline-offset-4 hover:underline">
+          terms
+        </Link>
+        ,{' '}
+        <Link href="/booking-policy" className="underline-offset-4 hover:underline">
+          booking policy
+        </Link>
+        , and{' '}
+        <Link href="/privacy" className="underline-offset-4 hover:underline">
+          privacy policy
+        </Link>
+        .
       </p>
     </form>
   )

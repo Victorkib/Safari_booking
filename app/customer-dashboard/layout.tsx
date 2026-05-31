@@ -1,9 +1,9 @@
-import { AppShell } from '@/components/layout/app-shell'
+import { CustomerShell } from '@/components/layout/customer-shell'
 
 export default function CustomerLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <AppShell variant="customer">{children}</AppShell>
+  return <CustomerShell>{children}</CustomerShell>
 }

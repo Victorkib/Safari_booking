@@ -10,7 +10,10 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx lib/db/seed.ts"
+    "db:seed": "tsx lib/db/seed.ts",
+    "db:clear": "tsx lib/db/clear.ts",
+    "db:reset": "tsx lib/db/reset.ts",
+    "db:purge-deleted": "tsx lib/db/purge-soft-deleted-users.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -1,81 +1,148 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
-import { getUserBookings } from '@/app/actions/bookings';
-import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/layout/page-header';
-import { StatTile } from '@/components/safari/stat-tile';
-import { TripCard } from '@/components/safari/trip-card';
-import { EmptySafari } from '@/components/safari/empty-safari';
-import { getPackageImageUrl } from '@/lib/safari-images';
-import { canSubmitPayment } from '@/lib/booking-status';
-import { BookOpen, CalendarDays, Wallet } from 'lucide-react';
+import Image from 'next/image'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth'
+import { getUserBookings } from '@/app/actions/bookings'
+import { Button } from '@/components/ui/button'
+import { CustomerPageHeader } from '@/components/layout/customer-page-header'
+import {
+  BookingFilterTabs,
+  type BookingFilter,
+} from '@/components/customer/booking-filter-tabs'
+import { StatTile } from '@/components/safari/stat-tile'
+import { TripCard } from '@/components/safari/trip-card'
+import { EmptySafari } from '@/components/safari/empty-safari'
+import { getPackageImageUrl } from '@/lib/safari-images'
+import { canSubmitPayment } from '@/lib/booking-status'
+import { filterCustomerBookings } from '@/lib/customer-bookings'
+import { compareDateStrings, formatDateLong, todayDateString } from '@/lib/booking-dates'
+import { BookOpen, CalendarDays, Wallet } from 'lucide-react'
 
 function isWithinNext30Days(dateStr: string) {
-  const start = new Date(`${dateStr}T00:00:00`);
-  const now = new Date();
-  const in30 = new Date();
-  in30.setDate(in30.getDate() + 30);
-  return start >= now && start <= in30;
+  const today = todayDateString()
+  const in30 = compareDateStrings(dateStr, today) >= 0
+  const before30 = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 30)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return compareDateStrings(dateStr, `${y}-${m}-${day}`) <= 0
+  })()
+  return in30 && before30
 }
 
 function getNextTrip(bookings: Awaited<ReturnType<typeof getUserBookings>>) {
-  const now = new Date();
+  const today = todayDateString()
   return bookings
-    .filter((b) => {
-      const end = new Date(`${b.end_date}T23:59:59`);
-      return end >= now && b.status !== 'cancelled';
-    })
-    .sort(
-      (a, b) =>
-        new Date(`${a.start_date}T00:00:00`).getTime() -
-        new Date(`${b.start_date}T00:00:00`).getTime(),
-    )[0];
+    .filter(
+      (b) => b.status !== 'cancelled' && compareDateStrings(b.end_date, today) >= 0
+    )
+    .sort((a, b) => compareDateStrings(a.start_date, b.start_date))[0]
 }
 
 function getActionForBooking(booking: { id: string; status?: string | null }) {
-  const status = booking.status ?? 'pending';
+  const status = booking.status ?? 'pending'
   if (canSubmitPayment(status)) {
     return {
       label: 'Complete payment',
       href: `/booking/${booking.id}/payment`,
-    };
+    }
   }
   if (status === 'paid') {
-    return { label: 'Track status', href: `/booking/${booking.id}` };
+    return { label: 'Track status', href: `/booking/${booking.id}` }
   }
-  return { label: 'View trip', href: `/booking/${booking.id}` };
+  return { label: 'View trip', href: `/booking/${booking.id}` }
 }
 
-export default async function CustomerDashboard() {
-  const session = await getSession();
+const EMPTY_COPY: Record<
+  BookingFilter,
+  { title: string; description: string }
+> = {
+  all: {
+    title: 'No safaris yet',
+    description:
+      'Your first African adventure is just a few clicks away. Browse our curated packages and secure your dates.',
+  },
+  pending: {
+    title: 'No pending payments',
+    description: 'When you create a booking, trips awaiting payment will appear here.',
+  },
+  upcoming: {
+    title: 'No upcoming trips',
+    description: 'Book a safari to see your confirmed and scheduled journeys here.',
+  },
+  past: {
+    title: 'No past trips',
+    description: 'Completed and ended safaris will be archived here.',
+  },
+  cancelled: {
+    title: 'No cancelled bookings',
+    description: 'Cancelled trips will appear in this list if any.',
+  },
+}
+
+function parseFilter(value: string | undefined): BookingFilter {
+  if (
+    value === 'pending' ||
+    value === 'upcoming' ||
+    value === 'past' ||
+    value === 'cancelled'
+  ) {
+    return value
+  }
+  return 'all'
+}
+
+interface CustomerDashboardProps {
+  searchParams: Promise<{ filter?: string }>
+}
+
+export default async function CustomerDashboard({
+  searchParams,
+}: CustomerDashboardProps) {
+  const session = await getSession()
 
   if (!session?.user) {
-    redirect('/sign-in');
+    redirect('/sign-in')
   }
 
-  const bookings = await getUserBookings();
-  const nextTrip = getNextTrip(bookings);
+  const { filter: filterParam } = await searchParams
+  const filter = parseFilter(filterParam)
+
+  const bookings = await getUserBookings()
+  const filtered = filterCustomerBookings(bookings, filter)
+  const nextTrip = filter === 'all' ? getNextTrip(bookings) : null
   const upcoming30 = bookings.filter(
-    (b) => isWithinNext30Days(b.start_date) && b.status !== 'cancelled',
-  ).length;
+    (b) => isWithinNext30Days(b.start_date) && b.status !== 'cancelled'
+  ).length
   const totalSpent = bookings
     .filter((b) => b.status === 'completed')
-    .reduce((sum, b) => sum + parseFloat(b.total_price), 0);
+    .reduce((sum, b) => sum + parseFloat(b.total_price), 0)
+
+  const empty = EMPTY_COPY[filter]
 
   return (
     <>
-      <PageHeader
+      <CustomerPageHeader
+        eyebrow="Your safari hub"
         title={`Welcome back, ${session.user.name?.split(' ')[0] ?? 'Traveler'}`}
         description="Your safari journeys, beautifully organized"
+        actions={
+          <Button asChild className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+            <Link href="/packages">Book new safari</Link>
+          </Button>
+        }
       />
 
       {nextTrip && (
         <section className="relative mb-10 overflow-hidden rounded-2xl border border-border/80">
           <div className="relative aspect-[21/9] min-h-[200px] sm:min-h-[260px]">
             <Image
-              src={getPackageImageUrl(nextTrip.package_id)}
+              src={getPackageImageUrl(
+                nextTrip.package_id,
+                nextTrip.package_destinations
+              )}
               alt={nextTrip.package_title ?? 'Upcoming safari'}
               fill
               className="object-cover"
@@ -93,17 +160,8 @@ export default async function CustomerDashboard() {
                 {nextTrip.package_title ?? 'Safari adventure'}
               </h2>
               <p className="mt-2 text-sm text-white/80">
-                {new Date(`${nextTrip.start_date}T00:00:00`).toLocaleDateString(
-                  'en-KE',
-                  {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                  },
-                )}{' '}
-                · {nextTrip.number_of_guests} guest
-                {nextTrip.number_of_guests !== 1 ? 's' : ''}
+                {formatDateLong(nextTrip.start_date)} · {nextTrip.number_of_guests}{' '}
+                guest{nextTrip.number_of_guests !== 1 ? 's' : ''}
               </p>
               <div className="mt-4">
                 <Button
@@ -144,37 +202,38 @@ export default async function CustomerDashboard() {
         />
       </div>
 
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">Your bookings</h2>
-        <Button asChild>
-          <Link href="/packages">Book a new safari</Link>
-        </Button>
-      </div>
+      <h2 className="font-display mb-4 text-2xl font-semibold">Your bookings</h2>
+      <BookingFilterTabs active={filter} />
 
-      {bookings.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptySafari
-          title="No safaris yet"
-          description="Your first African adventure is just a few clicks away. Browse our curated packages and secure your dates."
-          actionLabel="Explore packages"
-          actionHref="/packages"
+          title={bookings.length === 0 ? EMPTY_COPY.all.title : empty.title}
+          description={
+            bookings.length === 0 ? EMPTY_COPY.all.description : empty.description
+          }
+          actionLabel={filter === 'cancelled' ? undefined : 'Explore packages'}
+          actionHref={filter === 'cancelled' ? undefined : '/packages'}
         />
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {bookings.map((booking) => {
-            const action = getActionForBooking(booking);
+          {filtered.map((booking) => {
+            const action = getActionForBooking(booking)
             return (
               <TripCard
                 key={booking.id}
-                trip={booking}
+                trip={{
+                  ...booking,
+                  destinations: booking.package_destinations,
+                }}
                 href={`/booking/${booking.id}`}
                 actionLabel={action.label}
                 actionHref={action.href}
                 showPrice
               />
-            );
+            )
           })}
         </div>
       )}
     </>
-  );
+  )
 }

@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { formatDateRange } from '@/lib/booking-dates'
 import { getPackageImageUrl } from '@/lib/safari-images'
 import { getBookingStatusLabel, getBookingStatusStyles } from '@/lib/booking-status'
 import { cn } from '@/lib/utils'
@@ -27,13 +28,6 @@ interface TripCardProps {
   showPrice?: boolean
   variant?: 'customer' | 'driver'
   className?: string
-}
-
-function formatDateRange(start: string, end: string) {
-  const s = new Date(`${start}T00:00:00`)
-  const e = new Date(`${end}T00:00:00`)
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
-  return `${s.toLocaleDateString('en-KE', opts)} – ${e.toLocaleDateString('en-KE', opts)}`
 }
 
 export function TripCard({

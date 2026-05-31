@@ -13,6 +13,8 @@ import {
   Compass,
   MapPin,
   Home,
+  HelpCircle,
+  PlusCircle,
   Car,
   Users,
 } from 'lucide-react'
@@ -52,6 +54,7 @@ export const publicSiteNav: NavItem[] = [
 export const adminNav: NavItem[] = [
   { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { title: 'Bookings', href: '/admin/bookings', icon: Calendar },
+  { title: 'Users', href: '/admin/users', icon: Users },
   { title: 'Payments', href: '/admin/payments', icon: CreditCard },
   { title: 'Invoices', href: '/admin/invoices', icon: FileText },
   { title: 'Packages', href: '/admin/packages', icon: Package },
@@ -69,6 +72,14 @@ export const driverNav: NavItem[] = [
 
 export const customerPortalNav: NavItem[] = [
   { title: 'My Bookings', href: '/customer-dashboard', icon: BookOpen },
+]
+
+/** Top navigation for the traveler-facing customer shell */
+export const customerTopNav: NavItem[] = [
+  { title: 'My Trips', href: '/customer-dashboard', icon: BookOpen },
+  { title: 'Browse Safaris', href: '/packages', icon: Compass, external: true },
+  { title: 'Book New', href: '/packages', icon: PlusCircle, external: true },
+  { title: 'Help', href: '/faq', icon: HelpCircle, external: true },
 ]
 
 export const shellConfigs: Record<ShellVariant, ShellConfig> = {
@@ -113,6 +124,7 @@ export const pathLabels: Record<string, string> = {
   invoices: 'Invoices',
   packages: 'Packages',
   drivers: 'Drivers',
+  users: 'Users',
   vehicles: 'Vehicles',
   reports: 'Reports',
   schedule: 'Schedule',
